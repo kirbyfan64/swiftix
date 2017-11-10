@@ -10,26 +10,52 @@ import Regex
 import SwiftCLI
 import SwiftSoup
 
-enum Build {
+enum Build : Codable {
     case stable
     case snapshot(date: String)
 
     func stringify() -> String {
         switch self {
-            case .stable: return "stable"
-            case .snapshot(let date): return "snapshot-\(date)"
+        case .stable: return "stable"
+        case .snapshot(let date): return "snapshot-\(date)"
         }
     }
 }
 
-struct Version {
+extension Build {
+    private enum CodingKeys: String, CodingKey {
+        case stable
+        case snapshot
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        if let value = try? values.decode(String.self, forKey: .snapshot) {
+            self = .snapshot(date: value)
+        } else {
+            self = .stable
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .stable:
+            try container.encode("", forKey: .stable)
+        case .snapshot(let date):
+            try container.encode(date, forKey: .snapshot)
+        }
+    }
+}
+
+struct Version : Codable {
     var version: String
     var ubuntu: String
     var build: Build
     var url: String
 }
 
-class VersionSet {
+class VersionSet : Codable {
     var base: String
     var stable: [String: Version] = [:]
     var snapshots: [String: Version] = [:]
@@ -139,6 +165,21 @@ class Context {
         }
     }
 
+    func getSwiftixDir() -> URL {
+        let home = fm.homeDirectoryForCurrentUser
+        return home.appendingPathComponent(".swiftix", isDirectory: true)
+    }
+
+    func getVersionStore(swiftixDir: URL, version: Version) -> URL {
+        let versionsDir = swiftixDir.appendingPathComponent("store", isDirectory: true)
+        return versionsDir.appendingPathComponent("swift-\(version.version)-\(version.build.stringify())",
+                                                  isDirectory: true)
+    }
+
+    func getVersionListPath(swiftixDir: URL) -> URL {
+        return swiftixDir.appendingPathComponent("versions.json")
+    }
+
     func getUbuntuVersion() -> String {
         note("Determining Ubuntu version...")
 
@@ -166,7 +207,7 @@ class Context {
         let sema = DispatchSemaphore(value: 0)
         var result = [String]()
 
-        let session = URLSession.init(configuration: URLSessionConfiguration.default)
+        let session = URLSession(configuration: URLSessionConfiguration.default)
         let task = session.dataTask(with: url) { data, response, error in
             if let error = error {
                 self.fail("retreiving swift.org downloads page: \(error)")
@@ -204,7 +245,7 @@ class Context {
             guard let filename = url.split(separator: "/").last else {
                 continue
             }
-            if let match = re.findFirst(in: String.init(filename)) {
+            if let match = re.findFirst(in: String(filename)) {
                 var build = Build.stable
                 if let snapshot = match.group(named: "snapshot") {
                     build = Build.snapshot(date: snapshot)
@@ -263,11 +304,49 @@ class Context {
         return groupVersions(getSwiftVersionsFor(ubuntu: ubuntu))
     }
 
+    func serializeVersionSets(_ versionSets: [String: VersionSet]) {
+        let swiftixDir = getSwiftixDir()
+        let versionListPath = getVersionListPath(swiftixDir: swiftixDir)
+
+        note("Saving version list...")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+
+        do {
+            let encoded = try encoder.encode(versionSets)
+            if !fm.createFile(atPath: versionListPath.path, contents: encoded) {
+                fail("error writing verison list file \(versionListPath.path)")
+            }
+        } catch Exception.Error(_, let error) {
+            fail("error serializing version list: \(error)")
+        } catch {
+            fail("unknown error occurred serializing version list")
+        }
+    }
+
+    func deserializeVersionSets() -> [String: VersionSet] {
+        let swiftixDir = getSwiftixDir()
+        let versionListPath = getVersionListPath(swiftixDir: swiftixDir)
+
+        let decoder = JSONDecoder()
+
+        do {
+            let data = try Data(contentsOf: versionListPath)
+            let decoded = try decoder.decode([String: VersionSet].self, from: data)
+            return decoded
+        } catch Exception.Error(_, let error) {
+            fail("error deserializing version list: \(error)")
+        } catch {
+            fail("unknown error occurred deserializing version list")
+        }
+    }
+
     func downloadSwift(from url: URL, _ completion: @escaping (URL) -> Void) {
         let sema = DispatchSemaphore(value: 0)
-        let session = URLSession.init(configuration: URLSessionConfiguration.default,
-                                      delegate: DownloadDelegate(ctx: self, completion: completion, sema: sema),
-                                      delegateQueue: nil)
+        let session = URLSession(configuration: URLSessionConfiguration.default,
+                                 delegate: DownloadDelegate(ctx: self, completion: completion, sema: sema),
+                                 delegateQueue: nil)
 
         let task = session.downloadTask(with: url)
         task.resume()
@@ -290,20 +369,9 @@ class Context {
         }
     }
 
-    func getSwiftixDir() -> URL {
-        let home = fm.homeDirectoryForCurrentUser
-        return home.appendingPathComponent(".swiftix", isDirectory: true)
-    }
-
-    func getVersionDir(swiftixDir: URL, version: Version) -> URL {
-        let versionsDir = swiftixDir.appendingPathComponent("versions", isDirectory: true)
-        return versionsDir.appendingPathComponent("swift-\(version.version)-\(version.build.stringify())",
-                                                  isDirectory: true)
-    }
-
     func install(_ version: Version) {
         let swiftixDir = getSwiftixDir()
-        let versionDir = getVersionDir(swiftixDir: swiftixDir, version: version)
+        let versionDir = getVersionStore(swiftixDir: swiftixDir, version: version)
 
         if fm.fileExists(atPath: versionDir.path) {
             fail("requested version is already installed")
@@ -311,11 +379,22 @@ class Context {
 
         let url = "https://swift.org/\(version.url)"
         note("Downloading \(url)...")
-        downloadSwift(from: URL.init(string: url)!) { url in
+        downloadSwift(from: URL(string: url)!) { url in
             self.extractSwift(tarFile: url, outputDir: versionDir)
         }
 
         note("Success!")
+    }
+}
+
+class UpdateCommand: Command {
+    let name = "update"
+    let shortDescription = "Update the list of available Swift versions"
+
+    func execute() {
+        let ctx = Context()
+        let versionSets = ctx.getSwiftVersionSetsFor(ubuntu: ctx.getUbuntuVersion())
+        ctx.serializeVersionSets(versionSets)
     }
 }
 
@@ -326,16 +405,18 @@ class AvailableCommand: Command {
 
     func execute() {
         let ctx = Context()
-        let versionSets = ctx.getSwiftVersionSetsFor(ubuntu: ctx.getUbuntuVersion())
+        let versionSets = ctx.deserializeVersionSets()
+        let maxSnapshots = self.maxSnapshots.value ?? 5
 
         // Reverse sort.
-        for versionBase in Array(versionSets.keys).sorted(by: { $0 > $1 }) {
-            let versionSet = versionSets[versionBase]!
+        for (_, versionSet) in versionSets.sorted(by: { $0.0 > $1.0 }) {
+            // let versionSet = versionSets[versionBase]!
             print("Version \(versionSet.base):")
             for stable in versionSet.stable.values {
                 print("  - \(stable.version)")
             }
-            for snapshot in versionSet.snapshots.values.prefix(maxSnapshots.value ?? 5) {
+
+            for (_, snapshot) in versionSet.snapshots.sorted(by: { $0.0 > $1.0 }).prefix(maxSnapshots) {
                 if case .snapshot(let date) = snapshot.build {
                     print("  - snapshot: \(date)")
                 }
@@ -352,7 +433,7 @@ class InstallCommand: Command {
 
     func execute() {
         let ctx = Context()
-        let versionSets = ctx.getSwiftVersionSetsFor(ubuntu: ctx.getUbuntuVersion())
+        let versionSets = ctx.deserializeVersionSets()
 
         guard let requestedBase = ctx.getSwiftVersionBase(version.value) else {
             ctx.fail("Invalid version \(version.value)")
@@ -382,5 +463,5 @@ class InstallCommand: Command {
 }
 
 let cli = CLI(name: "swiftix", version: "0.1.0", description: "description")
-cli.commands = [AvailableCommand(), InstallCommand()]
+cli.commands = [UpdateCommand(), AvailableCommand(), InstallCommand()]
 cli.goAndExit()
