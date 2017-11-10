@@ -11,6 +11,10 @@ class SystemProvider {
         get { return fm.homeDirectoryForCurrentUser.appendingPathComponent(".swiftix", isDirectory: true) }
     }
 
+    var activeLink: URL {
+        get { return swiftixDir.appendingPathComponent("active") }
+    }
+
     var versionListPath: URL {
         get { return swiftixDir.appendingPathComponent("versions.json") }
     }

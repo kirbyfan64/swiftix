@@ -53,6 +53,13 @@ class System {
         }
     }
 
+    func symlink(link: URL, to dest: URL) {
+        let ctx = self.ctx!
+        guard let _ = try? fm.createSymbolicLink(atPath: link.path, withDestinationPath: dest.path) else {
+            ctx.fail("failed to create symlink at \(link.path) pointing to \(dest.path)")
+        }
+    }
+
     func getUbuntuVersion() -> String {
         return provider.getUbuntuVersion(ctx: ctx!)
     }
