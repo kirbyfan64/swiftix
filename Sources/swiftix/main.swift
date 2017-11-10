@@ -4,10 +4,9 @@
 
 import Foundation
 import Dispatch
-import Progress
-import Rainbow
+
+import Console
 import Regex
-import SwiftCLI
 import SwiftSoup
 
 enum Build : Codable {
@@ -65,6 +64,12 @@ class VersionSet : Codable {
     }
 }
 
+extension Collection {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
+}
+
 extension Dictionary {
     subscript(key: Key, setDefault def: Value) -> Value {
         mutating get {
@@ -84,33 +89,30 @@ class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     var sema: DispatchSemaphore
     var progress: ProgressBar
 
-    static let maxProgress = 1000
-
     init(ctx: Context, completion: @escaping (URL) -> Void, sema: DispatchSemaphore) {
         self.ctx = ctx
         self.completion = completion
         self.sema = sema
-        self.progress = ProgressBar(count: DownloadDelegate.maxProgress,
-                                    configuration: [ProgressPercent(), ProgressBarLine(barLength: 60)])
+
+        // Adjust the width to fit everything nicely.
+        let width = ctx.console.size.width - 22
+        self.progress = ctx.console.progressBar(title: "downloading", width: width)
     }
 
     func finish() {
-        self.progress.setValue(DownloadDelegate.maxProgress)
+        progress.progress = 1
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
                     totalBytesExpectedToWrite: Int64) {
-        let percent = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        self.progress.setValue(Int(percent * Double(DownloadDelegate.maxProgress)))
+        progress.progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo url: URL) {
         finish()
-        defer {
-            ctx!.delete(url)
-        }
+        defer { ctx!.delete(url) }
 
         completion(url)
         sema.signal()
@@ -127,18 +129,20 @@ class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
 
 class Context {
     let fm = FileManager.default
+    let console = Terminal(arguments: CommandLine.arguments)
+    static let sharedInstance = Context()
 
     func fail(_ message: String) -> Never {
-        print("ERROR: \(message)".red)
+        console.error(message)
         exit(1)
     }
 
     func warn(_ message: String) {
-        print("WARNING: \(message)".magenta)
+        console.warning(message)
     }
 
     func note(_ message: String) {
-        print(message.cyan)
+        console.info(message)
     }
 
     func mkdir(_ url: URL) {
@@ -372,6 +376,7 @@ class Context {
     func install(_ version: Version) {
         let swiftixDir = getSwiftixDir()
         let versionDir = getVersionStore(swiftixDir: swiftixDir, version: version)
+        let versionDirTmp = versionDir.appendingPathExtension("tmp")
 
         if fm.fileExists(atPath: versionDir.path) {
             fail("requested version is already installed")
@@ -380,45 +385,64 @@ class Context {
         let url = "https://swift.org/\(version.url)"
         note("Downloading \(url)...")
         downloadSwift(from: URL(string: url)!) { url in
-            self.extractSwift(tarFile: url, outputDir: versionDir)
+            self.delete(versionDirTmp)
+            self.extractSwift(tarFile: url, outputDir: versionDirTmp)
         }
 
+        guard let _ = try? fm.moveItem(atPath: versionDirTmp.path, toPath: versionDir.path) else {
+            fail("failed to rename temporary path to final path")
+        }
         note("Success!")
     }
 }
 
 class UpdateCommand: Command {
-    let name = "update"
-    let shortDescription = "Update the list of available Swift versions"
+    let id = "update"
+    let help = ["Update the list of available Swift versions"]
+    let signature = [Runnable]()
 
-    func execute() {
-        let ctx = Context()
+    let console: ConsoleProtocol
+
+    init(console: ConsoleProtocol) {
+        self.console = console
+    }
+
+    func run(arguments: [String]) {
+        let ctx = Context.sharedInstance
         let versionSets = ctx.getSwiftVersionSetsFor(ubuntu: ctx.getUbuntuVersion())
         ctx.serializeVersionSets(versionSets)
     }
 }
 
 class AvailableCommand: Command {
-    let name = "available"
-    let shortDescription = "Show the available Swift versions"
-    let maxSnapshots = Key<Int>("-s", description: "max number of snapshots to print")
+    let id = "available"
+    let help = ["Show the available Swift versions"]
+    let signature = [Option(name: "max-snapshots", help: ["max number of snapshots to print"])]
 
-    func execute() {
-        let ctx = Context()
+    let console: ConsoleProtocol
+
+    init(console: ConsoleProtocol) {
+        self.console = console
+    }
+
+    func run(arguments: [String]) {
+        let ctx = Context.sharedInstance
+
+        let maxSnapshots = arguments.option("max-snapshots")?.int ?? 5
+
         let versionSets = ctx.deserializeVersionSets()
-        let maxSnapshots = self.maxSnapshots.value ?? 5
 
         // Reverse sort.
         for (_, versionSet) in versionSets.sorted(by: { $0.0 > $1.0 }) {
             // let versionSet = versionSets[versionBase]!
-            print("Version \(versionSet.base):")
+            ctx.console.print("Version \(versionSet.base):")
             for stable in versionSet.stable.values {
-                print("  - \(stable.version)")
+                ctx.console.print("  - \(stable.version)")
             }
 
             for (_, snapshot) in versionSet.snapshots.sorted(by: { $0.0 > $1.0 }).prefix(maxSnapshots) {
                 if case .snapshot(let date) = snapshot.build {
-                    print("  - snapshot: \(date)")
+                    ctx.console.print("  - snapshot: \(date)")
                 }
             }
         }
@@ -426,35 +450,46 @@ class AvailableCommand: Command {
 }
 
 class InstallCommand: Command {
-    let name = "install"
-    let shortDescription = "Install the given Swift version"
-    let version = Parameter()
-    let snapshot = OptionalParameter()
+    let id = "install"
+    let help = ["Install the given Swift version"]
+    let signature = [Value(name: "version", help: ["the Swift version to download"]),
+                     Value(name: "snapshot", help: ["the snapshot version to use"])]
 
-    func execute() {
-        let ctx = Context()
+    let console: ConsoleProtocol
+
+    init(console: ConsoleProtocol) {
+        self.console = console
+    }
+
+    func run(arguments: [String]) {
+        let ctx = Context.sharedInstance
+
+        guard let version = arguments[safe: 0] else {
+            ctx.fail("Argument 'version' is required.")
+        }
+
         let versionSets = ctx.deserializeVersionSets()
 
-        guard let requestedBase = ctx.getSwiftVersionBase(version.value) else {
-            ctx.fail("Invalid version \(version.value)")
+        guard let requestedBase = ctx.getSwiftVersionBase(version) else {
+            ctx.fail("Invalid version \(version)")
         }
         guard let requestedVersionSet = versionSets[requestedBase] else {
-            ctx.fail("Cannot find any matches for version \(version.value)")
+            ctx.fail("Cannot find any matches for version \(version)")
         }
 
-        if let snapshotDate = self.snapshot.value {
-            if requestedBase != version.value {
+        if let snapshot = arguments[safe: 1] {
+            if requestedBase != version {
                 ctx.warn("Snapshots are not for patch versions; assuming version \(requestedBase)")
             }
 
-            guard let requestedSnapshot = requestedVersionSet.snapshots[snapshotDate] else {
-                ctx.fail("Cannot find snapshot \(snapshotDate)")
+            guard let requestedSnapshot = requestedVersionSet.snapshots[snapshot] else {
+                ctx.fail("Cannot find snapshot \(snapshot)")
             }
 
             ctx.install(requestedSnapshot)
         } else {
-            guard let requestedVersion = requestedVersionSet.stable[version.value] else {
-                ctx.fail("Cannot find version \(version.value) (did you mean to use a snapshot?)")
+            guard let requestedVersion = requestedVersionSet.stable[version] else {
+                ctx.fail("Cannot find version \(version) (did you mean to use a snapshot?)")
             }
 
             ctx.install(requestedVersion)
@@ -462,6 +497,7 @@ class InstallCommand: Command {
     }
 }
 
-let cli = CLI(name: "swiftix", version: "0.1.0", description: "description")
-cli.commands = [UpdateCommand(), AvailableCommand(), InstallCommand()]
-cli.goAndExit()
+let console = Context.sharedInstance.console
+let commands: [Runnable] = [UpdateCommand(console: console), AvailableCommand(console: console), InstallCommand(console: console)]
+_ = try? console.run(executable: "swiftix", commands: commands, arguments: Array(CommandLine.arguments.dropFirst(1)),
+                     help: ["swiftix manages your installed Swift versions."])

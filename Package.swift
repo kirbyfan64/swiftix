@@ -8,15 +8,13 @@ import PackageDescription
 let package = Package(
     name: "swiftix",
     dependencies: [
-        .package(url: "https://github.com/scinfu/SwiftSoup", from: "1.5.0"),
-        .package(url: "https://github.com/jakeheis/SwiftCLI", from: "4.0.0"),
-        .package(url: "https://github.com/onevcat/Rainbow", from: "3.0.0"),
-        .package(url: "https://github.com/jkandzi/Progress.swift", from: "0.0.0"),
+        .package(url: "https://github.com/vapor/console", from: "2.2.0"),
         .package(url: "https://github.com/Coder-256/Regex", .branch("swift4")),
+        .package(url: "https://github.com/scinfu/SwiftSoup", from: "1.5.0"),
     ],
     targets: [
         .target(name: "swiftix", dependencies: [
-            "SwiftSoup", "SwiftCLI", "Rainbow", "Progress", "Regex"
+            "Console", "Regex", "SwiftSoup"
         ]),
     ]
 )
