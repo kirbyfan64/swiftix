@@ -42,7 +42,7 @@ class InstallCommand: Command {
         }
 
         ctx.system.move(from: versionDirTmp, to: versionDir)
-        ctx.note("Success!")
+        ctx.success()
     }
 
     func extract(tarFile: URL, outputDir: URL) {

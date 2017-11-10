@@ -29,4 +29,8 @@ class Context {
     func note(_ message: String) {
         console.info(message)
     }
+
+    func success(_ message: String = "Success!") {
+        console.success(message)
+    }
 }

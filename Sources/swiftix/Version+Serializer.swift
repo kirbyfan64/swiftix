@@ -32,8 +32,6 @@ extension Build {
 
 extension Dictionary where Key == String, Value == VersionSet {
     func serialize(ctx: Context) {
-        ctx.note("Saving version list...")
-
         let versionListPath = ctx.system.provider.versionListPath
 
         let encoder = JSONEncoder()

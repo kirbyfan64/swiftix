@@ -32,6 +32,6 @@ class ActivateCommand: Command {
         let activeLink = ctx.system.provider.activeLink
         ctx.system.delete(activeLink)
         ctx.system.symlink(link: activeLink, to: versionDir)
-        ctx.note("Success!")
+        ctx.success()
     }
 }
