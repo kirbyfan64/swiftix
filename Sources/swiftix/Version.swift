@@ -11,6 +11,15 @@ enum Build : Codable {
     case stable
     case snapshot(date: String)
 
+    init(stringified: String) {
+        if stringified == "stable" {
+            self = .stable
+        } else {
+            let date = stringified.replacingOccurrences(of: "snapshot-", with: "")
+            self = .snapshot(date: date)
+        }
+    }
+
     func stringify() -> String {
         switch self {
         case .stable: return "stable"
@@ -27,6 +36,17 @@ struct Version : Codable {
 
     var base: String? {
         get { return Version.getBase(version) }
+    }
+
+    var directory: String {
+        get { return "swift-\(version)-\(build.stringify())" }
+    }
+
+    static func parseDirectoryName(_ name: String) -> (version: String, build: Build) {
+        let re = try! Regex(pattern: "swift-(\\d\\.\\d)-(.+)", groupNames: ["version", "build"])
+        let match = re.findFirst(in: name)!
+        let build = Build(stringified: match.group(named: "build")!)
+        return (version: match.group(named: "version")!, build: build)
     }
 
     static func getBase(_ version: String) -> String? {

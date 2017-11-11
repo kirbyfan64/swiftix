@@ -60,6 +60,14 @@ class System {
         }
     }
 
+    func listdir(_ dir: URL) -> [String] {
+        let ctx = self.ctx!
+        guard let contents = try? fm.contentsOfDirectory(atPath: dir.path) else {
+            ctx.fail("failed to list contents of directory \(dir.path)")
+        }
+        return contents
+    }
+
     func getUbuntuVersion() -> String {
         return provider.getUbuntuVersion(ctx: ctx!)
     }

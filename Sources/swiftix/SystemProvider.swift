@@ -11,6 +11,10 @@ class SystemProvider {
         get { return fm.homeDirectoryForCurrentUser.appendingPathComponent(".swiftix", isDirectory: true) }
     }
 
+    var storeDir: URL {
+        get { return swiftixDir.appendingPathComponent("store", isDirectory: true) }
+    }
+
     var activeLink: URL {
         get { return swiftixDir.appendingPathComponent("active") }
     }
@@ -20,9 +24,7 @@ class SystemProvider {
     }
 
     func getVersionStore(for version: Version) -> URL {
-        let versionsDir = swiftixDir.appendingPathComponent("store", isDirectory: true)
-        return versionsDir.appendingPathComponent("swift-\(version.version)-\(version.build.stringify())",
-                                                  isDirectory: true)
+        return storeDir.appendingPathComponent(version.directory, isDirectory: true)
     }
 
     func getUbuntuVersion(ctx: Context) -> String {
