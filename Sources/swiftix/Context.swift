@@ -23,7 +23,7 @@ class Context {
     }
 
     func warn(_ message: String) {
-        console.warning(message)
+        console.output(message, style: .custom(.magenta), newLine: true)
     }
 
     func note(_ message: String) {
@@ -32,5 +32,9 @@ class Context {
 
     func success(_ message: String = "Success!") {
         console.success(message)
+    }
+
+    func print(_ message: String) {
+        console.print(message)
     }
 }
