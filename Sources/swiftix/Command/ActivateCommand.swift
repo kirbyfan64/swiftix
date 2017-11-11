@@ -28,6 +28,7 @@ class ActivateCommand: Command {
         let activeLink = ctx.system.provider.activeLink
         ctx.system.delete(activeLink)
         ctx.system.symlink(link: activeLink, to: versionDir)
-        ctx.success()
+        ctx.success("Success! Make sure ~/.swiftix/active/bin is on your PATH, and get started Swifting!")
+        ctx.success("(To add it, run:    echo 'export PATH=$PATH:~/.swiftix/active/bin' >> ~/.bashrc   )")
     }
 }

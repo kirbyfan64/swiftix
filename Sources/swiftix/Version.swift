@@ -39,7 +39,8 @@ struct Version : Codable {
     }
 
     static func parseDirectoryName(_ name: String) -> (version: String, build: Build) {
-        let re = try! Regex(pattern: "swift-(\\d\\.\\d)-(.+)", groupNames: ["version", "build"])
+        let re = try! Regex(pattern: "swift-(\\d\\.\\d(?:\\.\\d)?)-(.+)",
+                            groupNames: ["version", "build"])
         let match = re.findFirst(in: name)!
         let build = Build(stringified: match.group(named: "build")!)
         return (version: match.group(named: "version")!, build: build)
