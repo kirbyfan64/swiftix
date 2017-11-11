@@ -18,7 +18,7 @@ class System {
         do {
             try fm.createDirectory(at: url, withIntermediateDirectories: true)
         } catch {
-            ctx.fail("error creating \(url.path): \(error)")
+            ctx.fail("Error creating \(url.path): \(error)")
         }
     }
 
@@ -31,35 +31,35 @@ class System {
         do {
             try fm.removeItem(at: url)
         } catch {
-            ctx.fail("error removing \(url.path): \(error)")
+            ctx.fail("Error removing \(url.path): \(error)")
         }
     }
 
     func write(data: Data, to url: URL) {
         let ctx = self.ctx!
         guard fm.createFile(atPath: url.path, contents: data) else {
-            ctx.fail("failed to write \(url.path)")
+            ctx.fail("Failed to write \(url.path).")
         }
     }
 
     func move(from source: URL, to dest: URL) {
         let ctx = self.ctx!
         guard let _ = try? fm.moveItem(atPath: source.path, toPath: dest.path) else {
-            ctx.fail("failed to move \(source.path) to \(dest.path)")
+            ctx.fail("Failed to move \(source.path) to \(dest.path).")
         }
     }
 
     func symlink(link: URL, to dest: URL) {
         let ctx = self.ctx!
         guard let _ = try? fm.createSymbolicLink(atPath: link.path, withDestinationPath: dest.path) else {
-            ctx.fail("failed to create symlink at \(link.path) pointing to \(dest.path)")
+            ctx.fail("Failed to create symlink at \(link.path) pointing to \(dest.path).")
         }
     }
 
     func listdir(_ dir: URL) -> [String] {
         let ctx = self.ctx!
         guard let contents = try? fm.contentsOfDirectory(atPath: dir.path) else {
-            ctx.fail("failed to list contents of directory \(dir.path)")
+            ctx.fail("Failed to list contents of directory \(dir.path).")
         }
         return contents
     }
@@ -67,7 +67,7 @@ class System {
     func readlink(_ link: URL) -> URL {
         let ctx = self.ctx!
         guard let target = try? fm.destinationOfSymbolicLink(atPath: link.path) else {
-            ctx.fail("failed to read target of symlink \(link.path)")
+            ctx.fail("Failed to read target of symlink \(link.path).")
         }
         return URL(string: target)!
     }

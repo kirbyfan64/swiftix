@@ -42,7 +42,7 @@ class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
                     didCompleteWithError error: Error?) {
         if let error = error {
             finish()
-            ctx.fail("error downloading file: \(error.localizedDescription)")
+            ctx.fail("Error downloading file: \(error)")
         }
     }
 }

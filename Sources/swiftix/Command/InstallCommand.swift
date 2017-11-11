@@ -27,7 +27,7 @@ class InstallCommand: Command {
         let versionDirTmp = versionDir.appendingPathExtension("tmp")
 
         if ctx.system.exists(versionDir) {
-            ctx.fail("requested version is already installed")
+            ctx.fail("Requested version is already installed.")
         }
 
         ctx.system.delete(versionDirTmp)
@@ -53,7 +53,7 @@ class InstallCommand: Command {
 
         if proc.terminationStatus != 0 {
             ctx.system.delete(outputDir)
-            ctx.fail("tar failed while extracting Swift installation")
+            ctx.fail("tar failed while extracting Swift installation.")
         }
     }
 }

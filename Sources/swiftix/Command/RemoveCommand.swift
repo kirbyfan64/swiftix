@@ -26,14 +26,14 @@ class RemoveCommand: Command {
         let versionDir = ctx.system.provider.getVersionStore(for: version)
 
         if !ctx.system.exists(versionDir) {
-            ctx.fail("requested version has not been installed")
+            ctx.fail("Requested version has not been installed.")
         }
 
         let activeLink = ctx.system.provider.activeLink
         if ctx.system.exists(activeLink) {
             let activeVersionDir = ctx.system.readlink(activeLink)
             if activeVersionDir.path == versionDir.path {
-                ctx.fail("cannot remove the currently active version")
+                ctx.fail("Cannot remove the currently active version.")
             }
         }
 

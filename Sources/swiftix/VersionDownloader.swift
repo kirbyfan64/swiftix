@@ -15,11 +15,11 @@ class VersionDownloader {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let task = session.dataTask(with: url) { data, response, error in
             if let error = error {
-                ctx.fail("retreiving swift.org downloads page: \(error)")
+                ctx.fail("Retreiving swift.org downloads page: \(error)")
             }
 
             guard let dataString = String(data: data!, encoding: .utf8) else {
-                ctx.fail("can't decode swift.org downloads page data as UTF-8 string")
+                ctx.fail("Can't decode swift.org downloads page data as UTF-8 string.")
             }
 
             do {
@@ -27,9 +27,9 @@ class VersionDownloader {
                 let versions = try doc.select("a[title='Download']:not(.debug)")
                 result = try versions.array().map { try $0.attr("href") }
             } catch Exception.Error(_, let error) {
-                ctx.fail("parsing swift.org downloads page HTML: \(error)")
+                ctx.fail("Parsing swift.org downloads page HTML: \(error)")
             } catch {
-                ctx.fail("unknown error occurred")
+                ctx.fail("Parsing swift.org downloads page HTML: \(error)")
             }
             sema.signal()
         }

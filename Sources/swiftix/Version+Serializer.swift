@@ -37,7 +37,7 @@ extension Dictionary where Key == String, Value == VersionSet {
             let encoded = try encoder.encode(self)
             ctx.system.write(data: encoded, to: versionListPath)
         } catch {
-            ctx.fail("error serializing version list: \(error)")
+            ctx.fail("Error serializing version list: \(error)")
         }
     }
 
@@ -51,7 +51,7 @@ extension Dictionary where Key == String, Value == VersionSet {
             let decoded = try decoder.decode([String: VersionSet].self, from: data)
             return decoded
         } catch {
-            ctx.fail("error deserializing version list: \(error)")
+            ctx.fail("Error deserializing version list: \(error)")
         }
     }
 }

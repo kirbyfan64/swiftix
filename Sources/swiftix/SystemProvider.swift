@@ -37,7 +37,7 @@ class SystemProvider {
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let dataString = String(data: data, encoding: .utf8) else {
-            ctx.fail("can't decode lsb_release output data")
+            ctx.fail("Can't decode lsb_release output data.")
         }
 
         return dataString.trimmingCharacters(in: .whitespacesAndNewlines)
