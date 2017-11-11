@@ -22,8 +22,8 @@ extension Array where Iterator.Element == Version {
 
             let versionSet = versionSets[base, setDefault: VersionSet(base: base)]
             switch version.build {
-            case .stable:
-                versionSet.stable[version.version] = version
+            case .release:
+                versionSet.release[version.version] = version
             case .snapshot(let date):
                 versionSet.snapshots[date] = version
             }
@@ -53,7 +53,7 @@ extension Dictionary where Key == String, Value == VersionSet {
 
             return requestedSnapshot
         } else {
-            guard let requestedVersion = requestedVersionSet.stable[version] else {
+            guard let requestedVersion = requestedVersionSet.release[version] else {
                 ctx.fail("Cannot find version \(version) (did you mean to use a snapshot?)")
             }
 

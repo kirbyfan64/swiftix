@@ -8,12 +8,12 @@ import Dispatch
 import Regex
 
 enum Build : Codable {
-    case stable
+    case release
     case snapshot(date: String)
 
     init(stringified: String) {
-        if stringified == "stable" {
-            self = .stable
+        if stringified == "release" {
+            self = .release
         } else {
             let date = stringified.replacingOccurrences(of: "snapshot-", with: "")
             self = .snapshot(date: date)
@@ -22,7 +22,7 @@ enum Build : Codable {
 
     func stringify() -> String {
         switch self {
-        case .stable: return "stable"
+        case .release: return "release"
         case .snapshot(let date): return "snapshot-\(date)"
         }
     }
@@ -60,7 +60,7 @@ struct Version : Codable {
 
 class VersionSet : Codable {
     var base: String
-    var stable: [String: Version] = [:]
+    var release: [String: Version] = [:]
     var snapshots: [String: Version] = [:]
 
     init(base: String) {

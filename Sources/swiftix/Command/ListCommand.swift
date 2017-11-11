@@ -18,8 +18,8 @@ class ListCommand: Command {
         let storeDir = ctx.system.provider.storeDir
         for dir in ctx.system.listdir(storeDir).sorted(by: { $0 > $1 }) {
             switch Version.parseDirectoryName(dir) {
-            case (let version, Build.stable):
-                ctx.console.print("- \(version) (stable)")
+            case (let version, Build.release):
+                ctx.console.print("- \(version) (release)")
             case (let version, Build.snapshot(let date)):
                 ctx.console.print("- \(version) (snapshot: \(date))")
             }

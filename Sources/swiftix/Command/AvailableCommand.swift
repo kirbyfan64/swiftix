@@ -20,8 +20,8 @@ class AvailableCommand: Command {
         // Reverse sort.
         for (_, versionSet) in versionSets.sorted(by: { $0.0 > $1.0 }) {
             ctx.console.print("Version \(versionSet.base):")
-            for stable in versionSet.stable.values {
-                ctx.console.print("  - stable: \(stable.version)")
+            for release in versionSet.release.values {
+                ctx.console.print("  - release: \(release.version)")
             }
 
             for (_, snapshot) in versionSet.snapshots.sorted(by: { $0.0 > $1.0 }).prefix(maxSnapshots) {

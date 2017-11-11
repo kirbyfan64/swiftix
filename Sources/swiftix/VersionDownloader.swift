@@ -55,7 +55,7 @@ class VersionDownloader {
                 continue
             }
             if let match = re.findFirst(in: String(filename)) {
-                var build = Build.stable
+                var build = Build.release
                 if let snapshot = match.group(named: "snapshot") {
                     build = Build.snapshot(date: snapshot)
                 }

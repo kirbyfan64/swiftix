@@ -6,7 +6,7 @@ import Foundation
 
 extension Build {
     private enum CodingKeys: String, CodingKey {
-        case stable
+        case release
         case snapshot
     }
 
@@ -15,15 +15,15 @@ extension Build {
         if let value = try? values.decode(String.self, forKey: .snapshot) {
             self = .snapshot(date: value)
         } else {
-            self = .stable
+            self = .release
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .stable:
-            try container.encode("", forKey: .stable)
+        case .release:
+            try container.encode("", forKey: .release)
         case .snapshot(let date):
             try container.encode(date, forKey: .snapshot)
         }
