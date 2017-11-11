@@ -64,6 +64,14 @@ class System {
         return contents
     }
 
+    func readlink(_ link: URL) -> URL {
+        let ctx = self.ctx!
+        guard let target = try? fm.destinationOfSymbolicLink(atPath: link.path) else {
+            ctx.fail("failed to read target of symlink \(link.path)")
+        }
+        return URL(string: target)!
+    }
+
     func getUbuntuVersion() -> String {
         return provider.getUbuntuVersion(ctx: ctx!)
     }
