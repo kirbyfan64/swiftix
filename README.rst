@@ -3,6 +3,13 @@ swiftix
 
 *swiftix* is an easy-to-use Swift version manager for Ubuntu.
 
+Installing
+**********
+
+::
+
+  $ curl -L https://goo.gl/r3wPxq | sh
+
 How to use
 **********
 
