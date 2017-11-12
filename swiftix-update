@@ -1,0 +1,12 @@
+#!/bin/sh
+
+mkdir -p ~/.swiftix/bin
+cd ~/.swiftix/source
+
+set -ex
+
+git pull
+swift build -c release
+cp .build/release/swiftix ~/.swiftix/bin
+
+ln -sf "$0" ~/.swiftix/bin/swiftix-update
