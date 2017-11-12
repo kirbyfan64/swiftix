@@ -7,6 +7,7 @@ How to use
 **********
 
 ::
+
   # Downloads the latest list of Swift releases.
   $ swiftix update
   # Lists all the available Swift versions.
