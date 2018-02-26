@@ -9,6 +9,8 @@ class UpdateCommand: Command {
     let console = Context.sharedInstance.console
 
     func run(arguments: [String]) {
+        _ = parse(arguments: arguments)
+
         let versions = VersionDownloader.downloadList(ctx: ctx)
         let versionSets = versions.forUbuntu(ctx: ctx, ubuntu: ctx.system.getUbuntuVersion()).toVersionSets()
 

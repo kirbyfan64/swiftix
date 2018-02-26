@@ -4,12 +4,14 @@ class AvailableCommand: Command {
     let id = "available"
     let help = ["Show the available Swift versions"]
     let signature = [Option(name: "max-snapshots", help: ["max number of snapshots to print"])]
+                    as [Argument]
 
     let ctx = Context.sharedInstance
     let console = Context.sharedInstance.console
 
     func run(arguments: [String]) {
-        let maxSnapshots = arguments.option("max-snapshots")?.int ?? 5
+        let (_, opts) = parse(arguments: arguments)
+        let maxSnapshots = opts["max-snapshots"]?.int ?? 5
 
         let versionSets = VersionSetDict.deserialize(ctx: ctx)
 

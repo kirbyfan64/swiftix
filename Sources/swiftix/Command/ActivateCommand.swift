@@ -6,16 +6,16 @@ class ActivateCommand: Command {
     let id = "activate"
     let help = ["Changes the active Swift version."]
     let signature = [Value(name: "version", help: ["the Swift version to download"]),
-                     Value(name: "snapshot", help: ["the snapshot version to use"])]
+                     Option(name: "snapshot", short: "s", help: ["the snapshot version to use"])]
+                    as [Argument]
 
     let ctx = Context.sharedInstance
     let console = Context.sharedInstance.console
 
     func run(arguments: [String]) {
-        guard let version = arguments[safe: 0] else {
-            ctx.fail("Argument 'version' is required.")
-        }
-        let snapshot = arguments[safe: 1]
+        let (values, opts) = parse(arguments: arguments)
+        let version = values[0]
+        let snapshot = opts["snapshot"]
 
         let versionSets = VersionSetDict.deserialize(ctx: ctx)
         let requestedVersion = versionSets.find(ctx: ctx, version: version, snapshot: snapshot)

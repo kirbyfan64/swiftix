@@ -1,8 +1,4 @@
-extension Collection {
-    subscript(safe index: Index) -> Element? {
-        return indices.contains(index) ? self[index] : nil
-    }
-}
+import Foundation
 
 extension Dictionary {
     subscript(key: Key, setDefault def: Value) -> Value {

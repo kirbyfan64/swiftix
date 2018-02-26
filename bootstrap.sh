@@ -9,29 +9,45 @@ error() {
   exit 1
 }
 
-which curl 2>&1 || error "curl is required"
-which git 2>&1 || error "git is required"
+which curl >/dev/null 2>&1 || error "curl is required"
+which git >/dev/null 2>&1 || error "git is required"
 
-echo 'Checking Ubuntu version...'
-ubuntu="`lsb_release -rs`"
+if which swift >/dev/null 2>&1 && swift --version | grep -q 'swift-4'; then
+  echo "*****Using already-installed Swift (at `which swift`)*****"
+  already_installed=1
+else
+  echo '*****Downloading latest Swift*****'
+  echo 'Checking Ubuntu version...'
 
-if [ "$ubuntu" != "14.04" ] && [ "$ubuntu" != "16.04" ] && [ "$ubuntu" != "16.10" ]; then
-  echo "WARNING: No binaries available for Ubuntu $ubuntu version; defaulting to 16.10"
-  ubuntu=16.10
+  if which lsb_release >/dev/null 2>&1; then
+    ubuntu="`lsb_release -rs` 2>&1"
+  else
+    echo "WARNING: You are not using Ubuntu. Try installing Swift from your distro's package manager \
+before running this script."
+    ubuntu="<none>"
+    [ -f /etc/arch-release ] && echo "(For Arch, try installing swift-bin.)" ||:
+  fi
+
+  if [ "$ubuntu" != "14.04" ] && [ "$ubuntu" != "16.04" ] && [ "$ubuntu" != "16.10" ]; then
+    echo "WARNING: No binaries available for Ubuntu $ubuntu; defaulting to 16.10"
+    ubuntu=16.10
+  fi
+
+  ubuntu_nd="`echo $ubuntu | tr -d '.'`"
+
+  tmp="`mktemp -d`"
+  cd "$tmp"
+
+  echo "Downloading Swift $SWIFT to $tmp..."
+
+  echo https://swift.org/builds/swift-$SWIFT-release/ubuntu$ubuntu_nd/swift-$SWIFT-RELEASE-ubuntu$ubuntu.tar.gz
+  curl -Lo swift.tgz https://swift.org/builds/swift-$SWIFT-release/ubuntu$ubuntu_nd/swift-$SWIFT-RELEASE/swift-$SWIFT-RELEASE-ubuntu$ubuntu.tar.gz
+  echo 'Extracting Swift...'
+  tar xf swift.tgz --strip 1
+  export "PATH=$PATH:$tmp/usr/bin"
 fi
 
-ubuntu_nd="`echo $ubuntu | tr -d '.'`"
-
-tmp="`mktemp -d`"
-cd "$tmp"
-
-echo "Downloading Swift $SWIFT to $tmp..."
-
-echo https://swift.org/builds/swift-$SWIFT-release/ubuntu$ubuntu_nd/swift-$SWIFT-RELEASE-ubuntu$ubuntu.tar.gz
-curl -Lo swift.tgz https://swift.org/builds/swift-$SWIFT-release/ubuntu$ubuntu_nd/swift-$SWIFT-RELEASE/swift-$SWIFT-RELEASE-ubuntu$ubuntu.tar.gz
-echo 'Extracting Swift...'
-tar xf swift.tgz --strip 1
-export "PATH=$PATH:$tmp/usr/bin"
+echo '*****Downloading and Building swiftix*****'
 
 echo 'Downloading swiftix...'
 mkdir -p ~/.swiftix
@@ -47,9 +63,17 @@ chmod +x swiftix-update
 
 ln -sf ~/.swiftix/source/swiftix-update ~/.swiftix/bin/swiftix-update
 
-echo 'Cleaning up...'
-rm -rf "$tmp"
-
 echo 'Adding ~/.swiftix/bin and ~/.swiftix/active/bin to your PATH...'
-echo '# Added by Swiftix' >> ~/.bashrc
-echo 'export PATH="$PATH:$HOME/.swiftix/bin:$HOME/.swiftix/active/bin"' >> ~/.bashrc
+
+for file in ~/.bashrc ~/.zshrc; do
+  [ -f "$file" ] || continue
+  echo '# Added by Swiftix' >> "$file"
+  echo 'export PATH="$PATH:$HOME/.swiftix/bin:$HOME/.swiftix/active/bin"' >> "$file"
+done
+
+if [ -z "$already_installed" ]; then
+  echo 'Cleaning up...'
+  rm -rf "$tmp"
+fi
+
+echo 'Done! Try restarting your terminal to see your new PATH take effect.'

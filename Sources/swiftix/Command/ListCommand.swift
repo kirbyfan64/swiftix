@@ -11,6 +11,8 @@ class ListCommand: Command {
     let console = Context.sharedInstance.console
 
     func run(arguments: [String]) {
+        _ = parse(arguments: arguments)
+
         let storeDir = ctx.system.provider.storeDir
 
         let activeLink = ctx.system.provider.activeLink

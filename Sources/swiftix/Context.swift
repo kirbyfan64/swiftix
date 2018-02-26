@@ -14,8 +14,12 @@ class Context {
     }
 
     func fail(_ message: String) -> Never {
-        console.error(message)
+        error(message)
         exit(1)
+    }
+
+    func error(_ message: String) {
+        console.error(message)
     }
 
     func warn(_ message: String) {
